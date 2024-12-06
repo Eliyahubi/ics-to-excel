@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar to Excel Converter</title>
+    
+    <!-- Required libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        input[type="file"] {
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Calendar to Excel Converter</h1>
+        </header>
+        
+        <main>
+            <section>
+                <input type="file" id="fileInput" accept=".ics">
+                <button onclick="processFile()">Convert to Excel</button>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        }
+
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const icsData = e.target.result;
+                    const jcalData = ICAL.parse(icsData);
+                    const comp = new ICAL.Component(jcalData);
+                    const events = comp.getAllSubcomponents('vevent');
+                    
+                    const processedData = [];
+                    
+                    events.forEach(event => {
+                        const vevent = new ICAL.Event(event);
+                        
+                        const startDate = vevent.startDate.toJSDate();
+                        const endDate = vevent.endDate.toJSDate();
+                        
+                        processedData.push({
+                            'Start Date': formatDate(startDate),
+                            'Start Time': formatTime(startDate),
+                            'End Time': formatTime(endDate),
+                            'Description': vevent.summary || ''
+                        });
+                    });
+
+                    // Create Excel file
+                    const worksheet = XLSX.utils.json_to_sheet(processedData);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "Meetings");
+                    
+                    // Download file
+                    XLSX.writeFile(workbook, "calendar_events.xlsx");
+                } catch (error) {
+                    alert('Error processing file: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
